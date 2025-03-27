@@ -6,7 +6,7 @@ public class Main {
         FileSystem fs = new FileSystem();
         
         // Use CountDownLatch to synchronize threads
-        CountDownLatch latch = new CountDownLatch(2);
+        CountDownLatch latch = new CountDownLatch(1);
         
         // Thread for Process 1
         Thread p1 = new Thread(() -> {
@@ -18,18 +18,20 @@ public class Main {
                 
                 // 2. Write to file1
                 String content1 = "This is content for file1 in Process 1";
-                fs.open(0, "file1");
-                fs.write(0, "file1", content1.getBytes());
-                fs.close(0, "file1");
+                fs.open(1, "file1");
+                fs.write(1, "file1", content1.getBytes());
+                // 3. Close file1
+                fs.close(1, "file1");
                 
                 // 4. Create file2
                 fs.create("file2", 3);
                 
                 // 5. Write to file2
                 String content2 = "This is content for file2 in Process 1";
-                fs.open(0, "file2");
-                fs.write(0, "file2", content2.getBytes());
-                fs.close(0, "file2");
+                fs.open(1, "file2");
+                fs.write(1, "file2", content2.getBytes());
+                // 6. Close file2
+                fs.close(1, "file2");
                 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -47,14 +49,14 @@ public class Main {
                 System.out.println("\nProcess 2 Starting:");
                 
                 // 7. Open file1
-                fs.open(1, "file1");
+                fs.open(2, "file1");
                 
-                // 8. Read file1
-                byte[] readData1 = fs.read(1, "file1");
+                // 8. Read file1, print to screen
+                byte[] readData1 = fs.read(2, "file1");
                 System.out.println("Process 2 reading file1: " + new String(readData1));
                 
                 // 9. Close file1
-                fs.close(1, "file1");
+                fs.close(2, "file1");
                 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -72,14 +74,14 @@ public class Main {
                 System.out.println("\nProcess 3 Starting:");
                 
                 // 10. Open file2
-                fs.open(2, "file2");
+                fs.open(3, "file2");
                 
-                // 11. Read file2
-                byte[] readData2 = fs.read(2, "file2");
+                // 11. Read file2, print to screen
+                byte[] readData2 = fs.read(3, "file2");
                 System.out.println("Process 3 reading file2: " + new String(readData2));
                 
                 // 12. Close file2
-                fs.close(2, "file2");
+                fs.close(3, "file2");
                 
             } catch (Exception e) {
                 e.printStackTrace();

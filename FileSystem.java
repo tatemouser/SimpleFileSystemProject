@@ -1,10 +1,11 @@
 // Data structures for the file system
 import java.util.ArrayList;
-
+import java.lang.IndexOutOfBoundsException;
+import java.util.HashMap;
 // 1. Volume Control Block
 class VolumeControlBlock {
     private int numBlocks = 512;       // Given: disk has 512 blocks
-    private int blockSize = 2048;      // Given: 2K (2048 bytes) per block
+    private int blockSize = 2048;      // Given: 2K (2048 bytes) per block - unused
     private int freeBlockCount;        // Number of free blocks available
     private boolean[] freeBlockMap;    // Bitmap to track free blocks
 
@@ -163,10 +164,11 @@ class ProcessFileTableEntry {
 
 // Main File System class
 public class FileSystem {
+    private int blockSize = 2048; 
     private VolumeControlBlock vcb;
     private ArrayList<DirectoryEntry> directory;
-    private ArrayList<SystemFileTableEntry> systemOpenFileTable;
-    private ArrayList<ArrayList<ProcessFileTableEntry>> processOpenFileTables;
+    private HashMap<Integer, SystemFileTableEntry> systemOpenFileTable;
+    private HashMap<Integer, ArrayList<ProcessFileTableEntry>> processOpenFileTables;
     
     // Simulated disk memory (1MB = 1024KB = 1024 * 1024 bytes)
     private byte[] disk;
@@ -174,19 +176,19 @@ public class FileSystem {
     public FileSystem() {
         vcb = new VolumeControlBlock();
         directory = new ArrayList<>();
-        systemOpenFileTable = new ArrayList<>();
-        processOpenFileTables = new ArrayList<>();
+        systemOpenFileTable = new HashMap<>();
+        processOpenFileTables = new HashMap<>();
         
         // Initialize disk (1MB)
         disk = new byte[1024 * 1024];
         
         // Add an empty process file table for the first process
-        processOpenFileTables.add(new ArrayList<>());
+        processOpenFileTables.put(0, new ArrayList<>());
     }
     
     // Create a new process (for simulation)
-    public int createProcess() {
-        processOpenFileTables.add(new ArrayList<>());
+    public int createProcess(int processId) {
+        processOpenFileTables.put(processId, new ArrayList<>());
         return processOpenFileTables.size() - 1;
     }
     
@@ -233,7 +235,7 @@ public class FileSystem {
         
         // Check if file is already open in system-wide table
         int systemTableIndex = -1;
-        for (int i = 0; i < systemOpenFileTable.size(); i++) {
+        for (int i : systemOpenFileTable.keySet()) {
             if (systemOpenFileTable.get(i).getFileName().equals(fileName)) {
                 systemTableIndex = i;
                 systemOpenFileTable.get(i).incrementOpenCount();
@@ -244,11 +246,19 @@ public class FileSystem {
         // If not open, add to system-wide table
         if (systemTableIndex == -1) {
             FCB fcb = new FCB(fileEntry.getFileSize(), fileEntry.getStartBlock());
-            systemOpenFileTable.add(new SystemFileTableEntry(fileName, fcb));
-            systemTableIndex = systemOpenFileTable.size() - 1;
+            for (int i = 0; i <= systemOpenFileTable.size(); i++) {
+                if (!systemOpenFileTable.keySet().contains(i)) // will occur eventually
+                    systemTableIndex = i;
+            }
+            systemOpenFileTable.put(systemTableIndex, new SystemFileTableEntry(fileName, fcb));
         }
         
-        // Add to process's open file table
+        
+        // Check if process's open file table exists to process's open file table
+        if (!processOpenFileTables.containsKey(processId))
+            createProcess(processId);
+
+        // Get process's open file table
         ArrayList<ProcessFileTableEntry> processTable = processOpenFileTables.get(processId);
         
         // Check if the file is already open by this process
@@ -298,7 +308,7 @@ public class FileSystem {
             systemOpenFileTable.remove(systemTableIndex);
             
             // Update file handles in all process tables
-            for (ArrayList<ProcessFileTableEntry> pTable : processOpenFileTables) {
+            for (ArrayList<ProcessFileTableEntry> pTable : processOpenFileTables.values()) {
                 for (ProcessFileTableEntry entry : pTable) {
                     if (entry.getFileHandle() > systemTableIndex) {
                         // Adjust handle for entries after the removed one
@@ -308,7 +318,6 @@ public class FileSystem {
                 }
             }
         }
-        
         System.out.println("File " + fileName + " closed by process " + processId);
         return true;
     }
@@ -337,11 +346,11 @@ public class FileSystem {
         int fileSize = fcb.getFileSize();
         
         // Calculate total file size in bytes
-        int fileSizeBytes = fileSize * 2048; // blockSize is 2K
+        int fileSizeBytes = fileSize * blockSize; // blockSize is 2K
         
         // Read data from disk
         byte[] data = new byte[fileSizeBytes];
-        int startByte = startBlock * 2048;
+        int startByte = startBlock * blockSize;
         
         // Copy data from disk to buffer
         System.arraycopy(disk, startByte, data, 0, fileSizeBytes);
@@ -374,7 +383,7 @@ public class FileSystem {
         int fileSize = fcb.getFileSize();
         
         // Calculate total file size in bytes
-        int fileSizeBytes = fileSize * 2048; // blockSize is 2K
+        int fileSizeBytes = fileSize * blockSize; // blockSize is 2K
         
         // Check if data fits in the file
         if (data.length > fileSizeBytes) {
@@ -383,7 +392,7 @@ public class FileSystem {
         }
         
         // Write data to disk
-        int startByte = startBlock * 2048;
+        int startByte = startBlock * blockSize;
         
         // Copy data from buffer to disk
         System.arraycopy(data, 0, disk, startByte, data.length);

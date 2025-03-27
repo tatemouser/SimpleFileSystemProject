@@ -7,10 +7,10 @@ How to Run
 
 
 
-Task We Completed
+Tasks We Completed
 
 We created a basic file system simulation with...
-    1. contiguous file allocation
+    1. Contiguous file allocation
     2. Volume control block management
     3. System wide and per process open file tables
     4. Basic file operations (Create/Open/Close/Read/Write)
@@ -23,4 +23,4 @@ Features we added to this system include...
 
 
 Task We Did Not Complete
-    * As non-grad students we did all section except for graduate student specific work.
+    * As non-grad students we did all sections except for graduate student specific work.
