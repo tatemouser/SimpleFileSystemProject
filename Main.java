@@ -1,42 +1,101 @@
-import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
 
-// Add this Main class in a separate file named Main.java
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         // Create the file system
         FileSystem fs = new FileSystem();
         
-        // Test file operations
-        System.out.println("Testing file system operations:");
+        // Use CountDownLatch to synchronize threads
+        CountDownLatch latch = new CountDownLatch(2);
         
-        // Create some files
-        fs.create("file1", 2);
-        fs.create("file2", 3);
+        // Thread for Process 1
+        Thread p1 = new Thread(() -> {
+            try {
+                System.out.println("Process 1 Starting:");
+                
+                // 1. Create file1
+                fs.create("file1", 2);
+                
+                // 2. Write to file1
+                String content1 = "This is content for file1 in Process 1";
+                fs.open(0, "file1");
+                fs.write(0, "file1", content1.getBytes());
+                fs.close(0, "file1");
+                
+                // 4. Create file2
+                fs.create("file2", 3);
+                
+                // 5. Write to file2
+                String content2 = "This is content for file2 in Process 1";
+                fs.open(0, "file2");
+                fs.write(0, "file2", content2.getBytes());
+                fs.close(0, "file2");
+                
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                latch.countDown();
+            }
+        });
         
-        // Process 0 is the default process
-        int processId = 0;
+        // Thread for Process 2
+        Thread p2 = new Thread(() -> {
+            try {
+                // Wait for Process 1 to complete
+                latch.await();
+                
+                System.out.println("\nProcess 2 Starting:");
+                
+                // 7. Open file1
+                fs.open(1, "file1");
+                
+                // 8. Read file1
+                byte[] readData1 = fs.read(1, "file1");
+                System.out.println("Process 2 reading file1: " + new String(readData1));
+                
+                // 9. Close file1
+                fs.close(1, "file1");
+                
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                latch.countDown();
+            }
+        });
         
-        // Open files
-        int file1Handle = fs.open(processId, "file1");
-        int file2Handle = fs.open(processId, "file2");
+        // Thread for Process 3
+        Thread p3 = new Thread(() -> {
+            try {
+                // Wait for Process 1 to complete
+                latch.await();
+                
+                System.out.println("\nProcess 3 Starting:");
+                
+                // 10. Open file2
+                fs.open(2, "file2");
+                
+                // 11. Read file2
+                byte[] readData2 = fs.read(2, "file2");
+                System.out.println("Process 3 reading file2: " + new String(readData2));
+                
+                // 12. Close file2
+                fs.close(2, "file2");
+                
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                latch.countDown();
+            }
+        });
         
-        // Write to files
-        String content1 = "This is content for file1";
-        String content2 = "This is content for file2 with more data";
-        fs.write(processId, "file1", content1.getBytes());
-        fs.write(processId, "file2", content2.getBytes());
+        // Start threads
+        p1.start();
+        p2.start();
+        p3.start();
         
-        // Read from files
-        byte[] readData1 = fs.read(processId, "file1");
-        byte[] readData2 = fs.read(processId, "file2");
-        
-        System.out.println("Reading file1: " + new String(readData1));
-        System.out.println("Reading file2: " + new String(readData2));
-        
-        // Close files
-        fs.close(processId, "file1");
-        fs.close(processId, "file2");
-        
-        System.out.println("File operations completed successfully.");
+        // Wait for all threads to complete
+        p1.join();
+        p2.join();
+        p3.join();
     }
 }
